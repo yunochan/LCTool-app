@@ -1,0 +1,47 @@
+name: Build and Upload
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-11-jdk android-sdk
+        npm install -g cordova
+        npm install
+        npm install electron-packager --save-dev
+
+    - name: Build Electron App
+      run: npm run dist
+
+    - name: Create Cordova Project
+      run: |
+        cordova create cordovaApp
+        cd cordovaApp
+        cordova platform add android
+
+    - name: Copy Electron App to Cordova www Directory
+      run: npm run cordova-build
+
+    - name: Build APK
+      run: |
+        cd cordovaApp
+        cordova build android
+
+    - name: Zip APK
+      run: zip -r electron-apk.zip cordovaApp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: electron-apk
+        path: ./electron-apk.zip
